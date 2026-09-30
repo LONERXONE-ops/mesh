@@ -89,7 +89,7 @@ export function ModelPicker() {
               ))}
             </Section>
             <p className="mt-3 text-xs text-faint">
-              Built-in models use Mesh access when it is connected. My API models use a key you add in Settings. Keys are not stored in this preview.
+              Built-in models use Mesh access when it is connected. My API models use a key you add in Settings. Keys are stored securely on the server.
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 pb-safe">

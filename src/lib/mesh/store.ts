@@ -5,7 +5,6 @@ import {
   providerById,
 } from "./catalog";
 import { formatTime, titleFrom, uid } from "./format";
-import { seedConversations } from "./seed";
 import { forgetThumb, rememberThumb } from "./thumbs";
 import type {
   AppView,
@@ -60,7 +59,7 @@ const initial = (): MeshState => ({
   view: "chat",
   detail: null,
   activeId: "c-business",
-  conversations: seedConversations(),
+  conversations: [],
   drawerOpen: false,
   sidebarHidden: false,
   pickerOpen: false,
@@ -81,7 +80,7 @@ const initial = (): MeshState => ({
   fontScale: "md",
   enterToSend: true,
   showTimestamps: true,
-  profile: { name: "Anime Reviews", email: "anime@example.com" },
+  profile: { name: "You", email: "" },
   connections: defaultConnections(),
   availability: defaultAvailability(),
   notifyResponses: true,
@@ -190,19 +189,55 @@ export function bindPersistence() {
   });
 }
 
+export function dumpMeshHistory() {
+  const state = useMesh.getState();
+
+  console.log("===== MESH HISTORY =====");
+
+  for (const conversation of state.conversations) {
+    console.log(`\\n### ${conversation.title} [${conversation.mode}]`);
+
+    for (const turn of conversation.turns) {
+      console.log(`\\nUSER: ${turn.content}`);
+
+      for (const response of turn.responses) {
+        console.log(`\\n${response.modelId.toUpperCase()}:`);
+        console.log(response.content || `[${response.status}]`);
+      }
+    }
+  }
+
+  console.log("\\n===== END MESH HISTORY =====");
+}
+
 export function hydrateMesh() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return;
     const data = JSON.parse(raw) as Persisted;
     if (!data || data.v !== 1 || !Array.isArray(data.conversations)) return;
+
+    const oldSeededIds = new Set([
+      "launch-plan",
+      "product-launch",
+      "anime-recommendations",
+      "writing-workshop",
+    ]);
+
+    const conversations = data.conversations.filter(
+      (conversation) => !oldSeededIds.has(conversation.id),
+    );
+
     useMesh.setState({
-      activeId: data.activeId ?? null,
-      conversations: repair(data.conversations),
+      activeId:
+        data.activeId && conversations.some((conversation) => conversation.id === data.activeId)
+          ? data.activeId
+          : null,
+      conversations: repair(conversations),
       draft: data.draft ?? "",
-      draftModels: data.draftModels?.length ? data.draftModels : ["gemini", "groq", "claude"],
+      draftModels: data.draftModels?.length ? data.draftModels : ["gemini", "groq"],
       draftMode: data.draftMode ?? "balanced",
-      defaultModelIds: data.defaultModelIds ?? ["gemini", "groq", "claude"],
+      defaultModelIds: data.defaultModelIds ?? ["gemini", "groq"],
       defaultMode: data.defaultMode ?? "balanced",
       theme: data.theme === "light" ? "light" : "dark",
       density: data.density === "compact" ? "compact" : "comfortable",

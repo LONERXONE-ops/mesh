@@ -3,7 +3,6 @@ import type { ProviderDef, WorkMode } from "./types";
 export const PROVIDERS: ProviderDef[] = [
   { id: "gemini", name: "Gemini", kind: "builtin", blurb: "Built-in" },
   { id: "groq", name: "Groq", kind: "builtin", blurb: "Built-in" },
-  { id: "mistral", name: "Mistral", kind: "builtin", blurb: "Built-in" },
   { id: "dahl", name: "Dahl", kind: "builtin", blurb: "Built-in" },
   { id: "cloudflare", name: "Cloudflare", kind: "builtin", blurb: "Built-in" },
   { id: "openrouter", name: "OpenRouter", kind: "builtin", blurb: "Built-in" },
@@ -45,7 +44,7 @@ export function defaultAvailability(): Record<string, boolean> {
 
 export function defaultConnections(): Record<string, { connected: boolean; hint: string }> {
   return {
-    claude: { connected: true, hint: "7K2F" },
+    claude: { connected: false, hint: "" },
     deepseek: { connected: false, hint: "" },
     grok: { connected: false, hint: "" },
     kimi: { connected: false, hint: "" },
