@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-bg: #0c0d0f;
+  --color-surface: #16181c;
+  --color-surface-2: #22252b;
+  --color-bubble: #2a2e35;
+  --color-chip: #1c1f25;
+  --color-line: #2a2d33;
+  --color-line-strong: #3c4048;
+  --color-fg: #f4f4f5;
+  --color-muted: #9b9ba3;
+  --color-faint: #6f7078;
+  --color-ok: #3dce86;
+  --color-danger: #f07167;
+  --color-inverse: #f4f4f5;
+  --color-inverse-fg: #121316;
+  --color-model-gemini: #9bb6ff;
+  --color-model-groq: #f4f4f5;
+  --color-model-mistral: #f0a36a;
+  --color-model-dahl: #f0d08a;
+  --color-model-cloudflare: #f2b544;
+  --color-model-openrouter: #d5d5dc;
+  --color-model-cohere: #f4f4f5;
+  --color-model-claude: #e7b08a;
+  --color-model-deepseek: #8fd0c6;
+  --color-model-grok: #f4f4f5;
+  --color-model-kimi: #c9c4ff;
+  --shadow-pop: 0 16px 48px rgb(0 0 0 / 0.45);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    color-scheme: dark;
+    height: 100%;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+    --color-bg: #f3f2ee;
+    --color-surface: #fffcf8;
+    --color-surface-2: #eceae4;
+    --color-bubble: #e6e4de;
+    --color-chip: #efece6;
+    --color-line: #e0ddd6;
+    --color-line-strong: #cbc7be;
+    --color-fg: #141414;
+    --color-muted: #5c5a55;
+    --color-faint: #8a877f;
+    --color-ok: #1c7a45;
+    --color-danger: #c24138;
+    --color-inverse: #161616;
+    --color-inverse-fg: #f7f6f3;
+    --shadow-pop: 0 16px 40px rgb(20 20 20 / 0.12);
+  }
+
+  html[data-text="sm"] .mesh-copy {
+    font-size: 0.8125rem;
+  }
+  html[data-text="md"] .mesh-copy {
+    font-size: 0.9375rem;
+  }
+  html[data-text="lg"] .mesh-copy {
+    font-size: 1.0625rem;
+  }
+
+  body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background: #3a3d44;
+    color: #fff;
+  }
+
+  html[data-theme="light"] ::selection {
+    background: #d9d6ce;
+    color: #141414;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
+
+@utility pt-safe {
+  padding-top: max(0.25rem, env(safe-area-inset-top));
+}
+
+@utility pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@keyframes mesh-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mesh-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.mesh-pop {
+  animation: mesh-in 180ms ease-out;
+}
+
+.mesh-dot {
+  animation: mesh-dot 1s infinite;
+}
+
+.mesh-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.mesh-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-pop,
+  .mesh-dot {
+    animation: none;
+  }
+}
