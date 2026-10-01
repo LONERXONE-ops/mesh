@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiMeshProfileRouteImport } from './routes/api/mesh-profile'
+import { Route as ApiMeshStorageRouteImport } from './routes/api/mesh-storage'
+import { Route as ApiMeshUploadRouteImport } from './routes/api/mesh-upload'
 import { Route as ApiProviderKeysRouteImport } from './routes/api/provider-keys'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +26,21 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMeshProfileRoute = ApiMeshProfileRouteImport.update({
+  id: '/api/mesh-profile',
+  path: '/api/mesh-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeshStorageRoute = ApiMeshStorageRouteImport.update({
+  id: '/api/mesh-storage',
+  path: '/api/mesh-storage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeshUploadRoute = ApiMeshUploadRouteImport.update({
+  id: '/api/mesh-upload',
+  path: '/api/mesh-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiProviderKeysRoute = ApiProviderKeysRouteImport.update({
   id: '/api/provider-keys',
   path: '/api/provider-keys',
@@ -32,30 +50,61 @@ const ApiProviderKeysRoute = ApiProviderKeysRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/mesh-profile': typeof ApiMeshProfileRoute
+  '/api/mesh-storage': typeof ApiMeshStorageRoute
+  '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/mesh-profile': typeof ApiMeshProfileRoute
+  '/api/mesh-storage': typeof ApiMeshStorageRoute
+  '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/mesh-profile': typeof ApiMeshProfileRoute
+  '/api/mesh-storage': typeof ApiMeshStorageRoute
+  '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/api/provider-keys'
+  fullPaths:
+    | '/'
+    | '/api/chat'
+    | '/api/mesh-profile'
+    | '/api/mesh-storage'
+    | '/api/mesh-upload'
+    | '/api/provider-keys'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/api/provider-keys'
-  id: '__root__' | '/' | '/api/chat' | '/api/provider-keys'
+  to:
+    | '/'
+    | '/api/chat'
+    | '/api/mesh-profile'
+    | '/api/mesh-storage'
+    | '/api/mesh-upload'
+    | '/api/provider-keys'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/chat'
+    | '/api/mesh-profile'
+    | '/api/mesh-storage'
+    | '/api/mesh-upload'
+    | '/api/provider-keys'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiMeshProfileRoute: typeof ApiMeshProfileRoute
+  ApiMeshStorageRoute: typeof ApiMeshStorageRoute
+  ApiMeshUploadRoute: typeof ApiMeshUploadRoute
   ApiProviderKeysRoute: typeof ApiProviderKeysRoute
 }
 
@@ -75,6 +124,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mesh-profile': {
+      id: '/api/mesh-profile'
+      path: '/api/mesh-profile'
+      fullPath: '/api/mesh-profile'
+      preLoaderRoute: typeof ApiMeshProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mesh-storage': {
+      id: '/api/mesh-storage'
+      path: '/api/mesh-storage'
+      fullPath: '/api/mesh-storage'
+      preLoaderRoute: typeof ApiMeshStorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mesh-upload': {
+      id: '/api/mesh-upload'
+      path: '/api/mesh-upload'
+      fullPath: '/api/mesh-upload'
+      preLoaderRoute: typeof ApiMeshUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/provider-keys': {
       id: '/api/provider-keys'
       path: '/api/provider-keys'
@@ -88,6 +158,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiMeshProfileRoute: ApiMeshProfileRoute,
+  ApiMeshStorageRoute: ApiMeshStorageRoute,
+  ApiMeshUploadRoute: ApiMeshUploadRoute,
   ApiProviderKeysRoute: ApiProviderKeysRoute,
 }
 export const routeTree = rootRouteImport

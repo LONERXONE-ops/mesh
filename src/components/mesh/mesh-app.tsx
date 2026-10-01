@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Toaster, toast } from "sonner";
-import { bindPersistence, hydrateMesh, meshActions, useMesh } from "@/lib/mesh/store";
+import { bindCloudPersistence, bindPersistence, hydrateCloudProfile, hydrateCloudStorage, hydrateMesh, meshActions, useMesh } from "@/lib/mesh/store";
 import { cn } from "@/lib/cn";
 import { focusRing, inputClass } from "./bits";
 import { ChatView } from "./chat-view";
@@ -21,7 +21,25 @@ export function MeshApp() {
   useEffect(() => {
     hydrateMesh();
     setReady(true);
-    return bindPersistence();
+
+    const unbindLocal = bindPersistence();
+    let unbindCloud: (() => void) | undefined;
+    let cancelled = false;
+
+    void (async () => {
+      await hydrateCloudStorage();
+      await hydrateCloudProfile();
+
+      if (!cancelled) {
+        unbindCloud = bindCloudPersistence();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unbindLocal();
+      unbindCloud?.();
+    };
   }, []);
 
   useEffect(() => {

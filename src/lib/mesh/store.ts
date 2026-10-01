@@ -2,6 +2,15 @@ import { create } from "zustand";
 import { providerById } from "./catalog";
 import { formatTime, titleFrom, uid } from "./format";
 import { forgetThumb, rememberAttachment, rememberThumb } from "./thumbs";
+import { uploadCloudFile } from "./cloud-storage";
+import {
+  deleteCloudConversation,
+  loadCloudConversations,
+  loadCloudProfile,
+  migrateLocalConversations,
+  saveCloudConversation,
+  saveCloudProfile,
+} from "./cloud-storage";
 import type {
   AppView,
   Attachment,
@@ -167,6 +176,105 @@ export function conversationRunning(c: Conversation | null) {
 }
 
 let saveTimer: number | undefined;
+let cloudSyncTimer: number | undefined;
+let cloudHydrated = false;
+let cloudMigrated = false;
+let previousConversationIds = new Set<string>();
+
+function scheduleCloudSync(conversations: Conversation[]) {
+  window.clearTimeout(cloudSyncTimer);
+
+  cloudSyncTimer = window.setTimeout(async () => {
+    for (const conversation of conversations) {
+      await saveCloudConversation(conversation);
+    }
+
+    const currentIds = new Set(conversations.map((c) => c.id));
+
+    for (const id of previousConversationIds) {
+      if (!currentIds.has(id)) {
+        await deleteCloudConversation(id);
+      }
+    }
+
+    previousConversationIds = currentIds;
+  }, 500);
+}
+
+export async function hydrateCloudStorage() {
+  if (cloudHydrated) return;
+
+  cloudHydrated = true;
+
+  const state = useMesh.getState();
+  const localConversations = state.conversations;
+
+  const cloudConversations = await loadCloudConversations();
+
+  if (cloudConversations === null) {
+    previousConversationIds = new Set(localConversations.map((c) => c.id));
+    return;
+  }
+
+  if (cloudConversations.length === 0 && localConversations.length > 0 && !cloudMigrated) {
+    cloudMigrated = await migrateLocalConversations(localConversations);
+    previousConversationIds = new Set(localConversations.map((c) => c.id));
+    return;
+  }
+
+  const localById = new Map(localConversations.map((c) => [c.id, c]));
+  const cloudById = new Map(cloudConversations.map((c) => [c.id, c]));
+
+  for (const local of localConversations) {
+    const cloud = cloudById.get(local.id);
+
+    if (!cloud || local.updatedAt > cloud.updatedAt) {
+      await saveCloudConversation(local);
+      cloudById.set(local.id, local);
+    }
+  }
+
+  const merged = Array.from(cloudById.values()).sort(
+    (a, b) => b.updatedAt - a.updatedAt,
+  );
+
+  useMesh.setState({
+    conversations: merged,
+    activeId:
+      state.activeId && merged.some((c) => c.id === state.activeId)
+        ? state.activeId
+        : merged[0]?.id ?? null,
+  });
+
+  previousConversationIds = new Set(merged.map((c) => c.id));
+}
+
+export function bindCloudPersistence() {
+  return useMesh.subscribe((state) => {
+    scheduleCloudSync(state.conversations);
+  });
+}
+
+export async function hydrateCloudProfile() {
+  const profile = await loadCloudProfile();
+  if (!profile) return;
+
+  useMesh.setState((state) => ({
+    profile: {
+      ...state.profile,
+      ...profile,
+    },
+  }));
+}
+
+export function syncProfile(profile: Profile) {
+  void saveCloudProfile({
+    name: profile.name,
+    email: profile.email,
+    ...(profile.avatar ? { avatar: profile.avatar } : {}),
+  });
+}
+
 
 export function bindPersistence() {
   return useMesh.subscribe((state) => {
@@ -398,17 +506,34 @@ export const meshActions = {
       if (item.status !== "uploading") continue;
       const file = files.find((candidate) => candidate.name === item.name && candidate.size === item.size);
       if (!file) continue;
-      void rememberAttachment(item.id, file)
-        .then(() => {
+      void Promise.all([
+        rememberAttachment(item.id, file),
+        uploadCloudFile(file, "attachment"),
+      ])
+        .then(([, uploaded]) => {
+          if (!uploaded) throw new Error("Cloud upload failed");
+
           useMesh.setState((state) => ({
-            pending: state.pending.map((p) => (p.id === item.id ? { ...p, status: "ready" } : p)),
+            pending: state.pending.map((p) =>
+              p.id === item.id
+                ? {
+                    ...p,
+                    status: "ready",
+                    url: uploaded.url,
+                    cloudinaryPublicId: uploaded.publicId,
+                    resourceType: uploaded.resourceType,
+                  }
+                : p,
+            ),
           }));
         })
         .catch(() => {
           forgetThumb(item.id);
           useMesh.setState((state) => ({
             pending: state.pending.map((p) =>
-              p.id === item.id ? { ...p, status: "failed", error: "Could not read this file." } : p,
+              p.id === item.id
+                ? { ...p, status: "failed", error: "Could not upload this file." }
+                : p,
             ),
           }));
         });
@@ -549,7 +674,15 @@ export const meshActions = {
     useMesh.setState({ defaultMode });
   },
   updateProfile(patch: Partial<Profile>) {
-    useMesh.setState((s) => ({ profile: { ...s.profile, ...patch } }));
+    useMesh.setState((s) => {
+      const profile = { ...s.profile, ...patch };
+      void saveCloudProfile({
+        name: profile.name,
+        email: profile.email,
+        ...(profile.avatar ? { avatar: profile.avatar } : {}),
+      });
+      return { profile };
+    });
   },
   setTheme(theme: "dark" | "light") {
     useMesh.setState({ theme });

@@ -38,6 +38,9 @@ export interface Attachment {
   size: number;
   status: AttachmentStatus;
   error?: string;
+  url?: string;
+  cloudinaryPublicId?: string;
+  resourceType?: string;
 }
 
 export interface ModelResponse {

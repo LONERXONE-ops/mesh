@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { uploadCloudFile } from "@/lib/mesh/cloud-storage";
 import { toast } from "sonner";
 import * as Switch from "@radix-ui/react-switch";
 import { BYOK, BUILTIN, MODE_META, PROVIDERS } from "@/lib/mesh/catalog";
@@ -256,12 +257,31 @@ function ProfileForm() {
                   canvas.height = size;
                   const ctx = canvas.getContext("2d");
                   if (!ctx) return;
+
                   const scale = Math.max(size / img.width, size / img.height);
                   const w = img.width * scale;
                   const h = img.height * scale;
                   ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-                  meshActions.updateProfile({ avatar: canvas.toDataURL("image/jpeg", 0.85) });
-                  toast("Picture updated");
+
+                  canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                      toast.error("Could not prepare picture");
+                      return;
+                    }
+
+                    const uploaded = await uploadCloudFile(
+                      new File([blob], "avatar.jpg", { type: "image/jpeg" }),
+                      "avatar",
+                    );
+
+                    if (!uploaded) {
+                      toast.error("Could not upload picture");
+                      return;
+                    }
+
+                    meshActions.updateProfile({ avatar: uploaded.url });
+                    toast("Picture updated");
+                  }, "image/jpeg", 0.85);
                 };
                 img.src = String(reader.result);
               };
