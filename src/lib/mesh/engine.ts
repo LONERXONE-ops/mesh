@@ -223,6 +223,7 @@ export async function runResponse(
 
     const result = await fetch("/api/chat", {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
       },

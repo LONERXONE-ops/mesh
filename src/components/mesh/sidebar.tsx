@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Bookmark, Boxes, ChevronRight, History, MessageSquarePlus, Settings, X } from "lucide-react";
 import { providerById } from "@/lib/mesh/catalog";
+import { formatTime } from "@/lib/mesh/format";
 import { meshActions, useMesh, type MeshState } from "@/lib/mesh/store";
 import type { AppView } from "@/lib/mesh/types";
 import { cn } from "@/lib/cn";
@@ -64,6 +65,7 @@ function ConversationList() {
               title={c.title}
             >
               <span className="min-w-0 flex-1 truncate">{c.title}</span>
+              <time className="shrink-0 text-[11px] text-faint">{formatTime(c.updatedAt)}</time>
               {c.saved ? <Bookmark className="size-3.5 shrink-0 text-faint" aria-label="Saved" /> : null}
               {active ? <span className="size-1.5 shrink-0 rounded-full bg-fg" aria-hidden /> : null}
               <span className="sr-only">{names}</span>

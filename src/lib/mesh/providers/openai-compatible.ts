@@ -24,15 +24,14 @@ function createAdapter(
   model: string,
   options?: {
     authHeader?: string;
-    apiKeyRequired?: boolean;
+    source?: "server" | "user";
   },
 ): ProviderAdapter {
   return {
     id,
     async generate(request: ProviderRequest): Promise<ProviderResult> {
-      const key =
-        request.apiKey?.trim() ||
-        env(serverKeyEnv);
+      const source = options?.source ?? "user";
+      const key = source === "server" ? env(serverKeyEnv) : request.apiKey?.trim();
 
       if (!key) {
         throw new ProviderError(
@@ -90,6 +89,7 @@ export const groqAdapter = createAdapter(
   "GROQ_API_KEY",
   "https://api.groq.com/openai/v1/chat/completions",
   "openai/gpt-oss-120b",
+  { source: "server" },
 );
 
 export const dahlAdapter = createAdapter(
@@ -98,6 +98,7 @@ export const dahlAdapter = createAdapter(
   "DAHL_API_KEY",
   "https://inference.dahl.global/v1/chat/completions",
   "MiniMaxAI/MiniMax-M2.7",
+  { source: "server" },
 );
 
 export const openrouterAdapter = createAdapter(
@@ -106,6 +107,7 @@ export const openrouterAdapter = createAdapter(
   "OPENROUTER_API_KEY",
   "https://openrouter.ai/api/v1/chat/completions",
   "~openai/gpt-latest",
+  { source: "server" },
 );
 
 export const deepseekAdapter = createAdapter(

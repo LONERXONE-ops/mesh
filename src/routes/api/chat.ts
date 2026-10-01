@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { requireUserId } from "@/lib/auth/verify.server";
+import { providerById } from "@/lib/mesh/catalog";
 import { decryptProviderKey } from "@/lib/mesh/provider-keys.server";
 import { generateWithProvider } from "@/lib/mesh/providers";
 import { ProviderError, type ChatMessage } from "@/lib/mesh/providers/types";
@@ -79,11 +80,19 @@ export const Route = createFileRoute("/api/chat")({
           }
 
           const userId = await requireUserId();
+          const provider = providerById(raw.providerId);
+          if (!provider) {
+            return Response.json(
+              { ok: false, errorKind: "unavailable", error: "Unknown model." },
+              { status: 404 },
+            );
+          }
 
-          const apiKey = await getUserProviderKey(
-            userId,
-            raw.providerId,
-          );
+          // Built-in providers always use server env keys. A saved row must not override them.
+          const apiKey =
+            provider.kind === "byok"
+              ? await getUserProviderKey(userId, raw.providerId)
+              : undefined;
 
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 90_000);
@@ -140,7 +149,7 @@ export const Route = createFileRoute("/api/chat")({
               {
                 ok: false,
                 errorKind: "not_connected",
-                error: "Unauthorized",
+                error: "Sign in to use Mesh.",
               },
               { status: 401 },
             );

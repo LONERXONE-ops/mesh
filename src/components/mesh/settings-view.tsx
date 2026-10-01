@@ -55,20 +55,20 @@ const GROUPS: {
   },
   {
     id: "ai",
-    title: "AI",
-    text: "Configure your AI models and providers.",
+    title: "AI providers",
+    text: "Built-in Mesh access and your own API keys. Mesh never swaps a selected model.",
     icon: Sparkles,
     rows: [
-      { id: "providers", title: "AI Providers", text: "Manage available AI providers", icon: Sparkles },
-      { id: "api-keys", title: "API Keys", text: "Add and manage your API keys", icon: KeyRound },
+      { id: "providers", title: "Built-in status", text: "Gemini, Groq, Dahl, Cloudflare, OpenRouter, Cohere", icon: Sparkles },
+      { id: "api-keys", title: "BYOK connections", text: "Claude, DeepSeek, Grok, and Kimi use your key", icon: KeyRound },
       { id: "default-models", title: "Default models", text: "Set your preferred models", icon: Sparkles },
       { id: "default-mode", title: "Default chat mode", text: "Choose your default conversation mode", icon: SlidersHorizontal },
     ],
   },
   {
     id: "chat",
-    title: "Chat",
-    text: "Manage how your conversations work and are stored.",
+    title: "Workspace",
+    text: "Default models, conversation preferences, and history.",
     icon: MessageSquare,
     rows: [
       { id: "preferences", title: "Conversation preferences", text: "Customize your chat experience", icon: MessageSquare },
@@ -77,8 +77,8 @@ const GROUPS: {
   },
   {
     id: "privacy",
-    title: "Privacy",
-    text: "Control your data and privacy settings.",
+    title: "Storage",
+    text: "Cloud sync and attachment data stay on your account.",
     icon: Shield,
     rows: [{ id: "data", title: "Data controls", text: "Manage how your data is used", icon: Database }],
   },

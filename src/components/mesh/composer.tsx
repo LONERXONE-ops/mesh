@@ -153,7 +153,10 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
             }}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 px-1 pb-1 pt-1">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-line/80 px-1 pb-1 pt-2">
+          <span className="mr-1 text-[11px] font-medium uppercase tracking-[0.14em] text-faint">
+            {modelIds.length} {modelIds.length === 1 ? "model" : "models"}
+          </span>
           {modelIds.length === 0 ? (
             <button
               type="button"

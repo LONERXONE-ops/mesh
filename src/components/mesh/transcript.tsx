@@ -85,7 +85,7 @@ function ResponseCard({
   }
 
   return (
-    <article className="mt-4" aria-label={`${name} response`}>
+    <article className="mt-2 rounded-2xl border border-line bg-surface px-3 py-3 sm:px-4" aria-label={`${name} response`}>
       <header className="flex items-center gap-2">
         <ModelMark id={response.modelId} />
         <div className="min-w-0 flex-1">
@@ -276,6 +276,8 @@ export function Transcript({ conversation }: { conversation: Conversation }) {
                 </div>
               </div>
             </div>
+            <div className="mt-4">
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-faint">Mesh responses</p>
             {turn.responses.map((response) => {
               const defaultCollapsed = conversation.mode === "independent" && turn.id !== latestId && response.status === "completed";
               const collapsed = openIds[response.id] ?? defaultCollapsed;
@@ -291,6 +293,7 @@ export function Transcript({ conversation }: { conversation: Conversation }) {
                 />
               );
             })}
+            </div>
           </section>
         ))}
         <div ref={endRef} />
