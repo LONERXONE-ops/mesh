@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { BUILTIN, BYOK } from "@/lib/mesh/catalog";
@@ -9,21 +9,32 @@ import { focusRing } from "./bits";
 import { Wordmark } from "./logo";
 import { ModelMark } from "./model-mark";
 
+type KeyStatus = "idle" | "loading" | "ready" | "error";
+
 function Row({
   provider,
   selected,
+  status,
+  disabled,
+  onToggle,
 }: {
   provider: ProviderDef;
   selected: boolean;
+  status: string;
+  disabled: boolean;
+  onToggle: () => void;
 }) {
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={selected}
-      onClick={() => meshActions.toggleListedModel(provider.id)}
+      aria-disabled={disabled}
+      disabled={disabled}
+      onClick={onToggle}
       className={cn(
-        "flex min-h-14 w-full items-center gap-3 border-b border-line px-3 py-2 text-left last:border-b-0 hover:bg-surface-2/60",
+        "flex min-h-14 w-full items-center gap-3 border-b border-line px-3 py-2 text-left last:border-b-0",
+        disabled ? "cursor-not-allowed opacity-60" : "hover:bg-surface-2/60",
         focusRing,
       )}
     >
@@ -41,25 +52,23 @@ function Row({
       <span
         className={cn(
           "hidden items-center gap-1.5 text-xs sm:flex",
-          provider.kind === "builtin" ? "text-ok" : "text-faint",
+          status === "Connected" || status === "Built-in" ? "text-ok" : "text-faint",
         )}
       >
         <span
           className={cn(
             "size-1.5 rounded-full",
-            provider.kind === "builtin" ? "bg-ok" : "bg-faint",
+            status === "Connected" || status === "Built-in" ? "bg-ok" : "bg-faint",
           )}
           aria-hidden
         />
-        {provider.kind === "builtin" ? "Built-in" : "API key required"}
+        {status}
       </span>
 
       <span
         className={cn(
           "grid size-5 place-items-center rounded-md border",
-          selected
-            ? "border-fg bg-fg text-inverse-fg"
-            : "border-line-strong",
+          selected ? "border-fg bg-fg text-inverse-fg" : "border-line-strong",
         )}
         aria-hidden
       >
@@ -84,16 +93,40 @@ export function ModelPicker() {
   const target = useMesh((s) => s.pickerTarget);
   const defaults = useMesh((s) => s.defaultModelIds);
   const state = useMesh();
-  const selected =
-    target === "defaults" ? defaults : participantIds(state);
+  const selected = target === "defaults" ? defaults : participantIds(state);
+  const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setKeyStatus("loading");
+    fetch("/api/provider-keys", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json() as Promise<{
+          providers?: Array<{ providerId: string; connected: boolean }>;
+        }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const next: Record<string, boolean> = {};
+        for (const row of data.providers ?? []) next[row.providerId] = Boolean(row.connected);
+        setConnected(next);
+        setKeyStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setConnected({});
+        setKeyStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(next) =>
-        !next && meshActions.closePicker(false)
-      }
-    >
+    <Dialog.Root open={open} onOpenChange={(next) => !next && meshActions.closePicker(false)}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-inverse/60" />
 
@@ -105,19 +138,10 @@ export function ModelPicker() {
             <div className="min-w-0">
               <Wordmark className="mb-3 sm:hidden [&_img]:h-6" />
 
-              <Dialog.Title className="text-xl font-semibold">
-                Choose models
-              </Dialog.Title>
+              <Dialog.Title className="text-xl font-semibold">Choose models</Dialog.Title>
 
-              <Dialog.Description
-                id="model-picker-desc"
-                className="mt-1 text-sm text-muted"
-              >
-                Select the AI models you want to use{" "}
-                {target === "defaults"
-                  ? "by default"
-                  : "in this conversation"}
-                .
+              <Dialog.Description id="model-picker-desc" className="mt-1 text-sm text-muted">
+                Select the AI models you want to use {target === "defaults" ? "by default" : "in this conversation"}.
               </Dialog.Description>
             </div>
 
@@ -134,35 +158,46 @@ export function ModelPicker() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
             <Section title="Built-in" count={BUILTIN.length}>
-              {BUILTIN.map((p) => (
+              {BUILTIN.map((provider) => (
                 <Row
-                  key={p.id}
-                  provider={p}
-                  selected={selected.includes(p.id)}
+                  key={provider.id}
+                  provider={provider}
+                  selected={selected.includes(provider.id)}
+                  status="Built-in"
+                  disabled={false}
+                  onToggle={() => meshActions.toggleListedModel(provider.id)}
                 />
               ))}
             </Section>
 
             <Section title="My API" count={BYOK.length}>
-              {BYOK.map((p) => (
-                <Row
-                  key={p.id}
-                  provider={p}
-                  selected={selected.includes(p.id)}
-                />
-              ))}
+              {BYOK.map((provider) => {
+                const isConnected = keyStatus === "ready" && connected[provider.id] === true;
+                const alreadySelected = selected.includes(provider.id);
+                return (
+                  <Row
+                    key={provider.id}
+                    provider={provider}
+                    selected={alreadySelected}
+                    status={byokStatus(keyStatus, isConnected)}
+                    disabled={!isConnected && !alreadySelected}
+                    onToggle={() => {
+                      if (!isConnected && !alreadySelected) return;
+                      meshActions.toggleListedModel(provider.id);
+                    }}
+                  />
+                );
+              })}
             </Section>
 
             <p className="mt-3 text-xs text-faint">
-              Built-in models use Mesh access. My API models require your
-              own provider key.
+              Built-in models use Mesh access. My API models stay visible, but a disconnected key cannot be newly selected. Nothing here swaps in another model.
             </p>
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 pb-safe">
             <p className="text-sm text-muted">
-              {selected.length}{" "}
-              {selected.length === 1 ? "model" : "models"} selected
+              {selected.length} {selected.length === 1 ? "model" : "models"} selected
             </p>
 
             <div className="flex items-center gap-2">
@@ -195,6 +230,12 @@ export function ModelPicker() {
   );
 }
 
+function byokStatus(status: KeyStatus, connected: boolean) {
+  if (status === "loading" || status === "idle") return "Checking";
+  if (status === "error") return "Not connected";
+  return connected ? "Connected" : "Not connected";
+}
+
 function Section({
   title,
   count,
@@ -208,14 +249,10 @@ function Section({
     <section className="mb-5">
       <div className="mb-2 flex items-center gap-2">
         <h3 className="text-sm font-medium">{title}</h3>
-        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-faint">
-          {count} models
-        </span>
+        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-faint">{count} models</span>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-line bg-bg">
-        {children}
-      </div>
+      <div className="overflow-hidden rounded-2xl border border-line bg-bg">{children}</div>
     </section>
   );
 }

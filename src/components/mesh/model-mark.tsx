@@ -3,7 +3,6 @@ import { cn } from "@/lib/cn";
 const TONE: Record<string, string> = {
   gemini: "bg-model-gemini/15 text-model-gemini",
   groq: "bg-fg/10 text-model-groq",
-  mistral: "bg-model-mistral/15 text-model-mistral",
   dahl: "bg-model-dahl/15 text-model-dahl",
   cloudflare: "bg-model-cloudflare/15 text-model-cloudflare",
   openrouter: "bg-fg/10 text-model-openrouter",
@@ -24,13 +23,6 @@ function Glyph({ id }: { id: string }) {
   }
   if (id === "groq") {
     return <span className="text-[13px] font-semibold leading-none">9</span>;
-  }
-  if (id === "mistral") {
-    return (
-      <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
-        <path fill="currentColor" d="M4 18V6h3.2l4.8 7.2L16.8 6H20v12h-2.6V10.2L13.2 16h-2.4L7 10.2V18H4Z" />
-      </svg>
-    );
   }
   if (id === "dahl" || id === "claude") {
     return (
