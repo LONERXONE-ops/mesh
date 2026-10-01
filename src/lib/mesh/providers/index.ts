@@ -2,11 +2,14 @@ import { cloudflareAdapter } from "./cloudflare";
 import { cohereAdapter } from "./cohere";
 import {
   dahlAdapter,
+  deepseekAdapter,
+  grokAdapter,
   groqAdapter,
-  mistralAdapter,
+  kimiAdapter,
   openrouterAdapter,
 } from "./openai-compatible";
 import { geminiAdapter } from "./gemini";
+import { claudeAdapter } from "./claude";
 import { ProviderError } from "./types";
 import type { ProviderAdapter, ProviderRequest, ProviderResult } from "./types";
 
@@ -17,6 +20,10 @@ const adapters = new Map<string, ProviderAdapter>([
   ["cloudflare", cloudflareAdapter],
   ["openrouter", openrouterAdapter],
   ["cohere", cohereAdapter],
+  ["deepseek", deepseekAdapter],
+  ["grok", grokAdapter],
+  ["kimi", kimiAdapter],
+  ["claude", claudeAdapter],
 ]);
 
 export async function generateWithProvider(

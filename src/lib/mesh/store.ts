@@ -1,15 +1,11 @@
 import { create } from "zustand";
-import {
-  defaultAvailability,
-  defaultConnections,
-  providerById,
-} from "./catalog";
+import { providerById } from "./catalog";
 import { formatTime, titleFrom, uid } from "./format";
 import { forgetThumb, rememberThumb } from "./thumbs";
 import type {
   AppView,
   Attachment,
-  Connection,
+
   Conversation,
   Density,
   FontScale,
@@ -48,8 +44,6 @@ export interface MeshState {
   enterToSend: boolean;
   showTimestamps: boolean;
   profile: Profile;
-  connections: Record<string, Connection>;
-  availability: Record<string, boolean>;
   notifyResponses: boolean;
   notifyErrors: boolean;
   focusTick: number;
@@ -70,10 +64,10 @@ const initial = (): MeshState => ({
   renameId: null,
   deleteId: null,
   draft: "",
-  draftModels: ["gemini", "groq", "claude"],
+  draftModels: ["gemini", "groq"],
   draftMode: "balanced",
   pending: [],
-  defaultModelIds: ["gemini", "groq", "claude"],
+  defaultModelIds: ["gemini", "groq"],
   defaultMode: "balanced",
   theme: "dark",
   density: "comfortable",
@@ -81,8 +75,6 @@ const initial = (): MeshState => ({
   enterToSend: true,
   showTimestamps: true,
   profile: { name: "You", email: "" },
-  connections: defaultConnections(),
-  availability: defaultAvailability(),
   notifyResponses: true,
   notifyErrors: true,
   focusTick: 0,
@@ -103,8 +95,6 @@ interface Persisted {
   enterToSend: boolean;
   showTimestamps: boolean;
   profile: Profile;
-  connections: Record<string, Connection>;
-  availability: Record<string, boolean>;
   notifyResponses: boolean;
   notifyErrors: boolean;
 }
@@ -178,8 +168,6 @@ export function bindPersistence() {
         enterToSend: state.enterToSend,
         showTimestamps: state.showTimestamps,
         profile: state.profile,
-        connections: state.connections,
-        availability: state.availability,
         notifyResponses: state.notifyResponses,
         notifyErrors: state.notifyErrors,
       };
@@ -245,9 +233,7 @@ export function hydrateMesh() {
       enterToSend: data.enterToSend !== false,
       showTimestamps: data.showTimestamps !== false,
       profile: data.profile ?? initial().profile,
-      connections: { ...defaultConnections(), ...data.connections },
-      availability: { ...defaultAvailability(), ...data.availability },
-      notifyResponses: data.notifyResponses !== false,
+          notifyResponses: data.notifyResponses !== false,
       notifyErrors: data.notifyErrors !== false,
     });
   } catch {
@@ -342,7 +328,11 @@ export const meshActions = {
   },
   toggleListedModel(id: string) {
     const s = useMesh.getState();
-    const apply = (ids: string[]) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+    const provider = providerById(id);
+    if (!provider) return;
+
+    const apply = (ids: string[]) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
     if (s.pickerOpen && s.pickerTarget === "defaults") {
       useMesh.setState({ defaultModelIds: apply(s.defaultModelIds) });
       return;
@@ -426,7 +416,11 @@ export const meshActions = {
       const conversations = s.conversations.filter((c) => c.id !== id);
       return {
         conversations,
-        activeId: s.activeId === id ? (conversations[0]?.id ?? null) : s.activeId,
+        activeId: s.activeId === id ? null : s.activeId,
+        draft: s.activeId === id ? "" : s.draft,
+        pending: s.activeId === id ? [] : s.pending,
+        draftModels: s.activeId === id ? [...s.defaultModelIds] : s.draftModels,
+        draftMode: s.activeId === id ? s.defaultMode : s.draftMode,
         deleteId: null,
         view: "chat",
       };
@@ -516,19 +510,6 @@ export const meshActions = {
       })),
     }));
   },
-  setAvailability(id: string, available: boolean) {
-    useMesh.setState((s) => ({ availability: { ...s.availability, [id]: available } }));
-  },
-  connectProvider(id: string, hint: string) {
-    useMesh.setState((s) => ({
-      connections: { ...s.connections, [id]: { connected: true, hint } },
-    }));
-  },
-  disconnectProvider(id: string) {
-    useMesh.setState((s) => ({
-      connections: { ...s.connections, [id]: { connected: false, hint: "" } },
-    }));
-  },
   setDefaultMode(defaultMode: WorkMode) {
     useMesh.setState({ defaultMode });
   },
@@ -571,18 +552,16 @@ export function maskedKey(hint: string) {
   return `••••••••${hint}`;
 }
 
-export function providerReady(id: string, s: MeshState) {
+export function providerReady(id: string, _s: MeshState) {
   const def = providerById(id);
-  if (!def) return { ok: false as const, errorKind: "failed" as const, error: "Unknown model." };
-  if (s.availability[id] === false) {
-    return { ok: false as const, errorKind: "unavailable" as const, error: `${def.name} is currently unavailable.` };
-  }
-  if (def.kind === "byok" && !s.connections[id]?.connected) {
+
+  if (!def) {
     return {
       ok: false as const,
-      errorKind: "not_connected" as const,
-      error: `Connect your API key to use ${def.name}.`,
+      errorKind: "failed" as const,
+      error: "Unknown model.",
     };
   }
+
   return { ok: true as const };
 }

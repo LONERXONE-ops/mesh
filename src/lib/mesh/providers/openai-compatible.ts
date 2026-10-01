@@ -19,19 +19,25 @@ interface OpenAIResponse {
 function createAdapter(
   id: string,
   name: string,
-  apiKeyEnv: string,
+  serverKeyEnv: string,
   url: string,
   model: string,
+  options?: {
+    authHeader?: string;
+    apiKeyRequired?: boolean;
+  },
 ): ProviderAdapter {
   return {
     id,
     async generate(request: ProviderRequest): Promise<ProviderResult> {
-      const key = env(apiKeyEnv);
+      const key =
+        request.apiKey?.trim() ||
+        env(serverKeyEnv);
 
       if (!key) {
         throw new ProviderError(
-          `${name} is not configured on the server.`,
-          "unavailable",
+          `${name} is not connected.`,
+          "not_connected",
         );
       }
 
@@ -43,12 +49,12 @@ function createAdapter(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
+            [options?.authHeader ?? "Authorization"]: `Bearer ${key}`,
           },
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: id === "openrouter" ? 1000 : 2048,
+            max_tokens: 2048,
           }),
           signal: request.signal,
         },
@@ -86,14 +92,6 @@ export const groqAdapter = createAdapter(
   "openai/gpt-oss-120b",
 );
 
-export const mistralAdapter = createAdapter(
-  "mistral",
-  "Mistral",
-  "MISTRAL_API_KEY",
-  "https://api.mistral.ai/v1/chat/completions",
-  "mistral-large-latest",
-);
-
 export const dahlAdapter = createAdapter(
   "dahl",
   "Dahl",
@@ -108,4 +106,28 @@ export const openrouterAdapter = createAdapter(
   "OPENROUTER_API_KEY",
   "https://openrouter.ai/api/v1/chat/completions",
   "~openai/gpt-latest",
+);
+
+export const deepseekAdapter = createAdapter(
+  "deepseek",
+  "DeepSeek",
+  "",
+  "https://api.deepseek.com/chat/completions",
+  "deepseek-flash",
+);
+
+export const grokAdapter = createAdapter(
+  "grok",
+  "Grok",
+  "",
+  "https://api.x.ai/v1/chat/completions",
+  "grok-4.7",
+);
+
+export const kimiAdapter = createAdapter(
+  "kimi",
+  "Kimi",
+  "",
+  "https://api.moonshot.ai/v1/chat/completions",
+  "kimi-k3",
 );

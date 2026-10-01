@@ -9,6 +9,7 @@ export interface ProviderRequest {
   providerId: string;
   messages: ChatMessage[];
   signal?: AbortSignal;
+  apiKey?: string;
 }
 
 export interface ProviderResult {
@@ -17,15 +18,16 @@ export interface ProviderResult {
   content: string;
 }
 
+export type ProviderErrorKind =
+  | "unavailable"
+  | "not_connected"
+  | "failed";
+
 export class ProviderError extends Error {
-  readonly kind: "unavailable" | "not_connected" | "failed";
+  readonly kind: ProviderErrorKind;
   readonly status?: number;
 
-  constructor(
-    message: string,
-    kind: "unavailable" | "not_connected" | "failed" = "failed",
-    status?: number,
-  ) {
+  constructor(message: string, kind: ProviderErrorKind, status?: number) {
     super(message);
     this.name = "ProviderError";
     this.kind = kind;

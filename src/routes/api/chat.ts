@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getSql } from "@/lib/db";
+import { requireUserId } from "@/lib/auth/verify.server";
+import { decryptProviderKey } from "@/lib/mesh/provider-keys.server";
 import { generateWithProvider } from "@/lib/mesh/providers";
 import { ProviderError, type ChatMessage } from "@/lib/mesh/providers/types";
 
@@ -16,7 +19,9 @@ function isValidBody(value: unknown): value is ChatBody {
     return false;
   }
 
-  if (!Array.isArray(body.messages)) return false;
+  if (!Array.isArray(body.messages)) {
+    return false;
+  }
 
   return body.messages.every(
     (message) =>
@@ -26,6 +31,37 @@ function isValidBody(value: unknown): value is ChatBody {
         (message as Record<string, unknown>).role === "assistant") &&
       typeof (message as Record<string, unknown>).content === "string",
   );
+}
+
+async function getUserProviderKey(
+  userId: string,
+  providerId: string,
+): Promise<string | undefined> {
+  const sql = await getSql();
+
+  const rows = await sql<{
+    encrypted_key: string;
+  }>`
+    select encrypted_key
+    from user_provider_keys
+    where user_id = ${userId}
+      and provider_id = ${providerId}
+    limit 1
+  `;
+
+  const encrypted = rows[0]?.encrypted_key;
+
+  if (!encrypted) return undefined;
+
+  try {
+    return decryptProviderKey(encrypted);
+  } catch (error) {
+    console.error("[mesh/provider-keys] decrypt failed", error);
+    throw new ProviderError(
+      "The saved provider key could not be decrypted.",
+      "failed",
+    );
+  }
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -42,6 +78,13 @@ export const Route = createFileRoute("/api/chat")({
             );
           }
 
+          const userId = await requireUserId();
+
+          const apiKey = await getUserProviderKey(
+            userId,
+            raw.providerId,
+          );
+
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 90_000);
 
@@ -50,6 +93,7 @@ export const Route = createFileRoute("/api/chat")({
               providerId: raw.providerId,
               messages: raw.messages,
               signal: controller.signal,
+              apiKey,
             });
 
             return Response.json({
@@ -88,6 +132,17 @@ export const Route = createFileRoute("/api/chat")({
                 error: error.message,
               },
               { status },
+            );
+          }
+
+          if (error instanceof Error && error.message === "Unauthorized") {
+            return Response.json(
+              {
+                ok: false,
+                errorKind: "not_connected",
+                error: "Unauthorized",
+              },
+              { status: 401 },
             );
           }
 

@@ -15,11 +15,11 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import * as Switch from "@radix-ui/react-switch";
 import { BYOK, BUILTIN, MODE_META, PROVIDERS } from "@/lib/mesh/catalog";
-import { maskedKey, meshActions, useMesh } from "@/lib/mesh/store";
+import { meshActions, useMesh } from "@/lib/mesh/store";
 import type { SettingsDetail, WorkMode } from "@/lib/mesh/types";
 import { cn } from "@/lib/cn";
 import { Field, focusRing, inputClass } from "./bits";
@@ -446,24 +446,29 @@ function Toggle({
 }
 
 function ProvidersForm() {
-  const availability = useMesh((s) => s.availability);
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">
-        If a model is unavailable, Mesh says so. It will not swap in a different one.
+        Mesh uses the provider configuration available on its server. Provider
+        availability cannot be manually faked from this device.
       </p>
       <ul className="overflow-hidden rounded-2xl border border-line">
         {PROVIDERS.map((p) => (
-          <li key={p.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
+          <li
+            key={p.id}
+            className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0"
+          >
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium">{p.name}</span>
-              <span className="block text-xs text-faint">{p.kind === "builtin" ? "Built-in" : "My API"}</span>
+              <span className="block text-xs text-faint">
+                {p.kind === "builtin"
+                  ? "Server configured"
+                  : "Personal API key"}
+              </span>
             </span>
-            <Toggle
-              label={`${p.name} availability`}
-              checked={availability[p.id] !== false}
-              onCheckedChange={(v) => meshActions.setAvailability(p.id, v)}
-            />
+            <span className="text-xs text-muted">
+              {p.kind === "builtin" ? "Server" : "BYOK"}
+            </span>
           </li>
         ))}
       </ul>
@@ -472,84 +477,219 @@ function ProvidersForm() {
 }
 
 function KeysForm() {
-  const connections = useMesh((s) => s.connections);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [secret, setSecret] = useState("");
+  const [keys, setKeys] = useState<Record<string, string>>({});
+  const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/provider-keys")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed to load provider connections.");
+        return (await response.json()) as {
+          ok?: boolean;
+          providers?: Array<{ providerId: string; connected: boolean }>;
+        };
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const next: Record<string, boolean> = {};
+        for (const provider of data.providers ?? []) {
+          next[provider.providerId] = provider.connected;
+        }
+        setConnected(next);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load API key connections.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function saveKey(providerId: string) {
+    const key = keys[providerId]?.trim();
+
+    if (!key) {
+      toast.error("Enter an API key first.");
+      return;
+    }
+
+    setSaving(providerId);
+
+    try {
+      const response = await fetch("/api/provider-keys", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId, key }),
+      });
+
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error ?? "Failed to save API key.");
+      }
+
+      setConnected((current) => ({
+        ...current,
+        [providerId]: true,
+      }));
+
+      setKeys((current) => ({
+        ...current,
+        [providerId]: "",
+      }));
+
+      toast.success("API key connected.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save API key.",
+      );
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function removeKey(providerId: string) {
+    setSaving(providerId);
+
+    try {
+      const response = await fetch("/api/provider-keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId }),
+      });
+
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error ?? "Failed to remove API key.");
+      }
+
+      setConnected((current) => ({
+        ...current,
+        [providerId]: false,
+      }));
+
+      toast.success("API key removed.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove API key.",
+      );
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted">Loading provider connections...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted">
-        The key is checked, then thrown away. Mesh only remembers that you connected and the last four characters. Real keys will live on the server later.
-      </p>
-      <ul className="overflow-hidden rounded-2xl border border-line">
-        {BYOK.map((p) => {
-          const conn = connections[p.id];
-          const open = editing === p.id;
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-sm font-semibold">Your API keys</h3>
+        <p className="mt-1 text-sm text-muted">
+          Connect your own API keys for providers that require them.
+          Keys are stored securely on the Mesh server and are never shown
+          again after saving.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-line">
+        {BYOK.map((provider) => {
+          const isConnected = connected[provider.id] === true;
+          const isSaving = saving === provider.id;
+
           return (
-            <li key={p.id} className="border-b border-line px-4 py-3 last:border-b-0">
+            <div
+              key={provider.id}
+              className="border-b border-line p-4 last:border-b-0"
+            >
               <div className="flex items-center gap-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{p.name}</span>
-                  <span className="block text-xs text-faint">
-                    {conn?.connected ? `Connected · ${maskedKey(conn.hint)}` : "Not connected"}
-                  </span>
-                </span>
-                {conn?.connected ? (
+                <span
+                  className={cn(
+                    "h-2.5 w-2.5 shrink-0 rounded-full",
+                    isConnected ? "bg-emerald-500" : "bg-neutral-400",
+                  )}
+                />
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{provider.name}</p>
+                  <p className="text-xs text-faint">
+                    {isConnected ? "Connected" : "API key required"}
+                  </p>
+                </div>
+
+                {isConnected ? (
                   <button
                     type="button"
-                    className={cn("h-11 rounded-full px-3 text-sm text-muted hover:text-fg", focusRing)}
-                    onClick={() => meshActions.disconnectProvider(p.id)}
+                    onClick={() => removeKey(provider.id)}
+                    disabled={isSaving}
+                    className="rounded-xl border border-line px-3 py-2 text-xs font-medium transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Disconnect
+                    {isSaving ? "Removing..." : "Remove"}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={cn("h-11 rounded-full bg-inverse px-4 text-sm font-medium text-inverse-fg", focusRing)}
-                    onClick={() => {
-                      setEditing(open ? null : p.id);
-                      setSecret("");
-                    }}
-                  >
-                    Connect
-                  </button>
-                )}
+                ) : null}
               </div>
-              {open ? (
-                <form
-                  className="mt-3 flex flex-col gap-2 sm:flex-row"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const value = secret.trim();
-                    if (value.length < 8) {
-                      toast("Enter the key from your provider");
-                      return;
-                    }
-                    const hint = value.slice(-4);
-                    setSecret("");
-                    setEditing(null);
-                    meshActions.connectProvider(p.id, hint);
-                    toast(`${p.name} connected`);
-                  }}
-                >
+
+              {!isConnected ? (
+                <div className="mt-3 flex gap-2">
                   <input
-                    className={inputClass}
                     type="password"
+                    value={keys[provider.id] ?? ""}
+                    onChange={(event) =>
+                      setKeys((current) => ({
+                        ...current,
+                        [provider.id]: event.target.value,
+                      }))
+                    }
+                    placeholder={`${provider.name} API key`}
                     autoComplete="off"
-                    placeholder="Paste API key"
-                    aria-label={`${p.name} API key`}
-                    value={secret}
-                    onChange={(e) => setSecret(e.target.value)}
+                    spellCheck={false}
+                    className={cn(inputClass, "min-w-0 flex-1")}
                   />
-                  <button type="submit" className={cn("h-11 rounded-full bg-inverse px-4 text-sm font-medium text-inverse-fg", focusRing)}>
-                    Save connection
+
+                  <button
+                    type="button"
+                    onClick={() => saveKey(provider.id)}
+                    disabled={isSaving || !(keys[provider.id]?.trim())}
+                    className="shrink-0 rounded-xl bg-foreground px-4 py-2 text-xs font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving..." : "Connect"}
                   </button>
-                </form>
+                </div>
               ) : null}
-            </li>
+            </div>
           );
         })}
-      </ul>
-      <p className="text-xs text-faint">Built-in providers ({BUILTIN.map((p) => p.name).join(", ")}) do not take a personal key here.</p>
+      </div>
+
+      <div className="rounded-2xl border border-line p-4">
+        <p className="text-xs text-muted">
+          Built-in providers do not require your personal API key.
+        </p>
+        <p className="mt-1 text-xs text-faint">
+          Available built-in providers:{" "}
+          {BUILTIN.map((provider) => provider.name).join(", ")}.
+        </p>
+      </div>
     </div>
   );
 }
@@ -628,7 +768,7 @@ function DataForm() {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">
-        Conversations, model choices, and connection hints stay in this browser. Mesh does not upload them, and it never keeps a full API key.
+        Conversations and local preferences stay in this browser. API keys are not stored in local browser data.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
