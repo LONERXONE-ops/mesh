@@ -1,5 +1,7 @@
 import { providerById } from "./catalog";
 import { meshActions, providerReady, useMesh } from "./store";
+import { attachmentText } from "./thumbs";
+import type { Attachment } from "./types";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -7,6 +9,18 @@ type ChatMessage = {
 };
 
 const controllers = new Map<string, AbortController>();
+
+function userContent(content: string, files: Attachment[]) {
+  if (!files.length) return content;
+  const blocks = files.map((file) => {
+    const stored = attachmentText(file.id);
+    if (!stored) {
+      return `Attached file: ${file.name} (${file.mime}). The file content is no longer available in this browser session.`;
+    }
+    return [`Attached file: ${stored.name}`, `Type: ${stored.mime}`, stored.text].join("\n");
+  });
+  return [content, "ATTACHMENTS", ...blocks].filter(Boolean).join("\n\n");
+}
 
 function getMessages(
   convId: string,
@@ -23,6 +37,8 @@ function getMessages(
 
   if (!currentTurn) return [];
 
+  const currentContent = userContent(currentTurn.content, currentTurn.attachments);
+
   // Collaborative mode is a task chain.
   // Previous user turns are context for the conversation, but must NEVER
   // become additional tasks for the current model chain.
@@ -30,7 +46,7 @@ function getMessages(
     const messages: ChatMessage[] = [
       {
         role: "user",
-        content: currentTurn.content,
+        content: currentContent,
       },
     ];
 
@@ -41,10 +57,10 @@ function getMessages(
           "MESH COLLABORATIVE HANDOFF",
           "",
           "CURRENT TASK:",
-          currentTurn.content,
+          currentContent,
           "",
           "WORK COMPLETED BY PREVIOUS MODELS:",
-          collaborativeContext.join("\\n\\n===== NEXT HANDOFF =====\\n\\n"),
+          collaborativeContext.join("\n\n===== NEXT HANDOFF =====\n\n"),
           "",
           "RULES:",
           "- Work ONLY on the current task above.",
@@ -58,7 +74,7 @@ function getMessages(
           "- If previous work is already correct, preserve it and build on it.",
           "- If something is uncertain, say so instead of guessing.",
           "- Do not mention this internal handoff protocol in your answer.",
-        ].join("\\n"),
+        ].join("\n"),
       });
     }
 
@@ -73,7 +89,7 @@ function getMessages(
 
     messages.push({
       role: "user",
-      content: turn.content,
+      content: userContent(turn.content, turn.attachments),
     });
 
     const ownResponse = turn.responses.find((r) => r.id === responseId);
@@ -88,7 +104,7 @@ function getMessages(
 
   messages.push({
     role: "user",
-    content: currentTurn.content,
+    content: currentContent,
   });
 
   return messages;

@@ -1,11 +1,10 @@
 import { create } from "zustand";
 import { providerById } from "./catalog";
 import { formatTime, titleFrom, uid } from "./format";
-import { forgetThumb, rememberThumb } from "./thumbs";
+import { forgetThumb, rememberAttachment, rememberThumb } from "./thumbs";
 import type {
   AppView,
   Attachment,
-
   Conversation,
   Density,
   FontScale,
@@ -17,6 +16,7 @@ import type {
 
 const KEY = "mesh.v1";
 const MAX_FILE = 20 * 1024 * 1024;
+const DEFAULT_MODELS = ["gemini", "groq"];
 
 export interface MeshState {
   view: AppView;
@@ -52,7 +52,7 @@ export interface MeshState {
 const initial = (): MeshState => ({
   view: "chat",
   detail: null,
-  activeId: "c-business",
+  activeId: null,
   conversations: [],
   drawerOpen: false,
   sidebarHidden: false,
@@ -64,10 +64,10 @@ const initial = (): MeshState => ({
   renameId: null,
   deleteId: null,
   draft: "",
-  draftModels: ["gemini", "groq"],
+  draftModels: [...DEFAULT_MODELS],
   draftMode: "balanced",
   pending: [],
-  defaultModelIds: ["gemini", "groq"],
+  defaultModelIds: [...DEFAULT_MODELS],
   defaultMode: "balanced",
   theme: "dark",
   density: "comfortable",
@@ -99,9 +99,21 @@ interface Persisted {
   notifyErrors: boolean;
 }
 
+function knownIds(ids: unknown, fallback: string[]) {
+  if (!Array.isArray(ids)) return [...fallback];
+  const next = ids.filter((id): id is string => typeof id === "string" && Boolean(providerById(id)));
+  return next.length ? next : [...fallback];
+}
+
+function knownSelection(ids: unknown) {
+  if (!Array.isArray(ids)) return [];
+  return ids.filter((id): id is string => typeof id === "string" && Boolean(providerById(id)));
+}
+
 function repair(conversations: Conversation[]): Conversation[] {
   return conversations.map((c) => ({
     ...c,
+    modelIds: knownSelection(c.modelIds),
     turns: c.turns.map((t) => ({
       ...t,
       responses: t.responses.map((r) => {
@@ -118,6 +130,13 @@ function repair(conversations: Conversation[]): Conversation[] {
       }),
     })),
   }));
+}
+
+function forgetConversationFiles(conversation: Conversation | undefined) {
+  if (!conversation) return;
+  for (const turn of conversation.turns) {
+    for (const file of turn.attachments) forgetThumb(file.id);
+  }
 }
 
 export const useMesh = create<MeshState>(initial);
@@ -183,19 +202,19 @@ export function dumpMeshHistory() {
   console.log("===== MESH HISTORY =====");
 
   for (const conversation of state.conversations) {
-    console.log(`\\n### ${conversation.title} [${conversation.mode}]`);
+    console.log(`\n### ${conversation.title} [${conversation.mode}]`);
 
     for (const turn of conversation.turns) {
-      console.log(`\\nUSER: ${turn.content}`);
+      console.log(`\nUSER: ${turn.content}`);
 
       for (const response of turn.responses) {
-        console.log(`\\n${response.modelId.toUpperCase()}:`);
+        console.log(`\n${response.modelId.toUpperCase()}:`);
         console.log(response.content || `[${response.status}]`);
       }
     }
   }
 
-  console.log("\\n===== END MESH HISTORY =====");
+  console.log("\n===== END MESH HISTORY =====");
 }
 
 export function hydrateMesh() {
@@ -212,8 +231,8 @@ export function hydrateMesh() {
       "writing-workshop",
     ]);
 
-    const conversations = data.conversations.filter(
-      (conversation) => !oldSeededIds.has(conversation.id),
+    const conversations = repair(
+      data.conversations.filter((conversation) => !oldSeededIds.has(conversation.id)),
     );
 
     useMesh.setState({
@@ -221,11 +240,11 @@ export function hydrateMesh() {
         data.activeId && conversations.some((conversation) => conversation.id === data.activeId)
           ? data.activeId
           : null,
-      conversations: repair(conversations),
+      conversations,
       draft: data.draft ?? "",
-      draftModels: data.draftModels?.length ? data.draftModels : ["gemini", "groq"],
+      draftModels: knownIds(data.draftModels, DEFAULT_MODELS),
       draftMode: data.draftMode ?? "balanced",
-      defaultModelIds: data.defaultModelIds ?? ["gemini", "groq"],
+      defaultModelIds: knownIds(data.defaultModelIds, DEFAULT_MODELS),
       defaultMode: data.defaultMode ?? "balanced",
       theme: data.theme === "light" ? "light" : "dark",
       density: data.density === "compact" ? "compact" : "comfortable",
@@ -233,7 +252,7 @@ export function hydrateMesh() {
       enterToSend: data.enterToSend !== false,
       showTimestamps: data.showTimestamps !== false,
       profile: data.profile ?? initial().profile,
-          notifyResponses: data.notifyResponses !== false,
+      notifyResponses: data.notifyResponses !== false,
       notifyErrors: data.notifyErrors !== false,
     });
   } catch {
@@ -331,8 +350,7 @@ export const meshActions = {
     const provider = providerById(id);
     if (!provider) return;
 
-    const apply = (ids: string[]) =>
-      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    const apply = (ids: string[]) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
     if (s.pickerOpen && s.pickerTarget === "defaults") {
       useMesh.setState({ defaultModelIds: apply(s.defaultModelIds) });
       return;
@@ -378,11 +396,22 @@ export const meshActions = {
     useMesh.setState({ pending: [...s.pending, ...next] });
     for (const item of next) {
       if (item.status !== "uploading") continue;
-      window.setTimeout(() => {
-        useMesh.setState((state) => ({
-          pending: state.pending.map((p) => (p.id === item.id ? { ...p, status: "ready" } : p)),
-        }));
-      }, 700);
+      const file = files.find((candidate) => candidate.name === item.name && candidate.size === item.size);
+      if (!file) continue;
+      void rememberAttachment(item.id, file)
+        .then(() => {
+          useMesh.setState((state) => ({
+            pending: state.pending.map((p) => (p.id === item.id ? { ...p, status: "ready" } : p)),
+          }));
+        })
+        .catch(() => {
+          forgetThumb(item.id);
+          useMesh.setState((state) => ({
+            pending: state.pending.map((p) =>
+              p.id === item.id ? { ...p, status: "failed", error: "Could not read this file." } : p,
+            ),
+          }));
+        });
     }
   },
   removePending(id: string) {
@@ -413,14 +442,20 @@ export const meshActions = {
   },
   deleteConversation(id: string) {
     useMesh.setState((s) => {
+      const removed = s.conversations.find((c) => c.id === id);
+      forgetConversationFiles(removed);
+      if (s.activeId === id) {
+        for (const file of s.pending) forgetThumb(file.id);
+      }
       const conversations = s.conversations.filter((c) => c.id !== id);
+      const deletingActive = s.activeId === id;
       return {
         conversations,
-        activeId: s.activeId === id ? null : s.activeId,
-        draft: s.activeId === id ? "" : s.draft,
-        pending: s.activeId === id ? [] : s.pending,
-        draftModels: s.activeId === id ? [...s.defaultModelIds] : s.draftModels,
-        draftMode: s.activeId === id ? s.defaultMode : s.draftMode,
+        activeId: deletingActive ? null : s.activeId,
+        draft: deletingActive ? "" : s.draft,
+        pending: deletingActive ? [] : s.pending,
+        draftModels: deletingActive ? [...s.defaultModelIds] : s.draftModels,
+        draftMode: deletingActive ? s.defaultMode : s.draftMode,
         deleteId: null,
         view: "chat",
       };
@@ -434,7 +469,7 @@ export const meshActions = {
     }
     const readyFiles = s.pending.filter((p) => p.status === "ready");
     if (!text && readyFiles.length === 0) return { error: "Write a message first." };
-    const models = participantIds(s);
+    const models = participantIds(s).filter((id) => providerById(id));
     if (models.length === 0) return { error: "Choose at least one model." };
     const convExisting = activeConversation(s);
     if (convExisting && conversationRunning(convExisting)) return { error: "Wait for the current replies, or stop them." };
@@ -538,6 +573,8 @@ export const meshActions = {
     else useMesh.setState({ notifyErrors: value });
   },
   clearHistory() {
+    const conversations = useMesh.getState().conversations;
+    for (const conversation of conversations) forgetConversationFiles(conversation);
     useMesh.setState({ conversations: [], activeId: null, view: "chat" });
   },
   resetLocal() {
