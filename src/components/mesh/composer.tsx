@@ -112,7 +112,7 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
         onFiles(e.dataTransfer.files);
       }}
     >
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-line bg-surface p-2">
+      <div className="mx-auto w-full max-w-4xl rounded-xl border border-line bg-surface p-1.5">
         {pending.length > 0 ? (
           <div className="flex flex-wrap gap-2 px-1 pb-2">
             {pending.map((file) => (
@@ -144,7 +144,7 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
             onChange={(e) => meshActions.setDraft(e.target.value)}
             placeholder="Message Mesh…"
             aria-label="Message Mesh"
-            className="max-h-40 min-h-11 flex-1 resize-none bg-transparent py-2.5 text-base text-fg outline-none placeholder:text-faint"
+            className="max-h-28 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-sm text-fg outline-none placeholder:text-faint"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && useMesh.getState().enterToSend) {
                 e.preventDefault();
@@ -153,45 +153,38 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
             }}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-line/80 px-1 pb-1 pt-2">
-          <span className="mr-1 text-[11px] font-medium uppercase tracking-[0.14em] text-faint">
-            {modelIds.length} {modelIds.length === 1 ? "model" : "models"}
-          </span>
+        <div className="flex items-center gap-2 px-1 pb-0.5 pt-1">
           {modelIds.length === 0 ? (
             <button
               type="button"
               onClick={onNeedModels}
-              className={cn(
-                "inline-flex h-11 items-center rounded-full border border-dashed border-line-strong px-3 text-sm text-muted",
-                focusRing,
-              )}
+              className={cn("inline-flex h-8 items-center rounded-full border border-dashed border-line-strong px-3 text-xs text-muted", focusRing)}
             >
               Add models
             </button>
           ) : (
-            modelIds.map((id) => (
-              <span
-                key={id}
-                className="inline-flex h-8 items-center gap-0.5 rounded-full border border-line bg-chip pl-0.5 pr-0.5"
-              >
-                <button
-                  type="button"
-                  className={cn("grid size-7 place-items-center rounded-full", focusRing)}
-                  onClick={onNeedModels}
-                  aria-label={`Change models, ${providerById(id)?.name ?? id} selected`}
-                >
-                  <ModelMark id={id} className="size-5" />
-                </button>
-                <button
-                  type="button"
-                  className={cn("grid size-6 place-items-center rounded-full text-faint hover:text-fg", focusRing)}
-                  aria-label={`Remove ${providerById(id)?.name ?? id}`}
-                  onClick={() => meshActions.removeParticipant(id)}
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
-            ))
+            <div className="inline-flex items-center gap-0.5 rounded-full border border-line bg-chip px-1 py-0.5">
+              {modelIds.map((id) => (
+                <span key={id} className="inline-flex items-center">
+                  <button
+                    type="button"
+                    className={cn("grid size-6 place-items-center rounded-full", focusRing)}
+                    onClick={onNeedModels}
+                    aria-label={`${providerById(id)?.name ?? id} selected`}
+                  >
+                    <ModelMark id={id} className="size-5" />
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("grid size-5 place-items-center rounded-full text-faint hover:text-fg", focusRing)}
+                    aria-label={`Remove ${providerById(id)?.name ?? id}`}
+                    onClick={() => meshActions.removeParticipant(id)}
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
           <div className="ml-auto flex items-center gap-1">
             <ModeMenu mode={mode} />
@@ -199,10 +192,7 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
               type="button"
               onClick={send}
               disabled={!running && !draft.trim() && pending.every((p) => p.status !== "ready")}
-              className={cn(
-                "grid size-11 place-items-center rounded-full bg-inverse text-inverse-fg transition disabled:bg-surface-2 disabled:text-faint",
-                focusRing,
-              )}
+              className={cn("grid size-8 place-items-center rounded-full bg-inverse text-inverse-fg transition disabled:bg-surface-2 disabled:text-faint", focusRing)}
               aria-label={running ? "Stop generating" : "Send message"}
             >
               {running ? <Square className="size-4 fill-current" /> : <ArrowUp className="size-5" />}
