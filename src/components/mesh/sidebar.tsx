@@ -6,7 +6,7 @@ import { meshActions, useMesh, type MeshState } from "@/lib/mesh/store";
 import type { AppView } from "@/lib/mesh/types";
 import { cn } from "@/lib/cn";
 import { Avatar, focusRing } from "./bits";
-import { Wordmark } from "./logo";
+import { Mark } from "./logo";
 
 function NavButton({
   icon,
@@ -24,7 +24,7 @@ function NavButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition",
+        "flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition",
         focusRing,
         active ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface hover:text-fg",
       )}
@@ -58,7 +58,7 @@ function ConversationList() {
               type="button"
               onClick={() => meshActions.openConversation(c.id)}
               className={cn(
-                "flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm transition",
+                "flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition",
                 focusRing,
                 active ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface hover:text-fg",
               )}
@@ -87,8 +87,11 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-4 pb-4 pt-5">
-        <Wordmark />
+      <div className="flex items-center justify-between px-3 pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <Mark className="h-6" />
+          <span className="text-sm font-medium">Mesh</span>
+        </div>
         {onNavigate ? (
           <button
             type="button"
@@ -161,7 +164,7 @@ export function Sidebar() {
   const hidden = useMesh((s: MeshState) => s.sidebarHidden);
   if (hidden) return null;
   return (
-    <aside className="hidden h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden border-r border-line bg-bg lg:flex">
+    <aside className="hidden h-full min-h-0 w-60 shrink-0 flex-col overflow-hidden border-r border-line bg-bg lg:flex">
       <SidebarBody />
     </aside>
   );

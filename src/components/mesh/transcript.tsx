@@ -85,13 +85,13 @@ function ResponseCard({
   }
 
   return (
-    <article className="mt-2 rounded-2xl border border-line bg-surface px-3 py-3 sm:px-4" aria-label={`${name} response`}>
+    <article className="mt-2 rounded-xl border border-line bg-surface px-2.5 py-2" aria-label={`${name} response`}>
       <header className="flex items-center gap-2">
-        <ModelMark id={response.modelId} />
+        <ModelMark id={response.modelId} className="size-5" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <h3 className="text-sm font-medium">{name}</h3>
-            <p className="flex items-center gap-1 text-xs text-muted" aria-live="polite">
+            <h3 className="sr-only">{name}</h3>
+            <p className="flex items-center gap-1 text-[11px] text-muted" aria-live="polite">
               {response.status === "completed" ? <Check className="size-3.5 text-ok" aria-hidden /> : null}
               {response.status === "error" ? (
                 <span className="size-1.5 rounded-full bg-danger" aria-hidden />
@@ -165,7 +165,7 @@ function ResponseCard({
         </div>
       ) : null}
       {!collapsed && response.content ? (
-        <div className="mt-2 rounded-xl border border-line bg-chip px-4 py-3">
+        <div className="mt-1.5 rounded-lg border border-line bg-chip px-3 py-2">
           <RichText text={response.content} />
           {response.status === "streaming" ? (
             <span className="ml-0.5 inline-block h-4 w-px bg-fg align-middle motion-safe:animate-pulse" aria-hidden />
@@ -269,8 +269,8 @@ export function Transcript({ conversation }: { conversation: Conversation }) {
                     </div>
                   ) : null}
                   {turn.content ? (
-                    <div className="inline-block rounded-2xl bg-bubble px-4 py-2.5 text-left">
-                      <p className="mesh-copy whitespace-pre-wrap leading-relaxed">{turn.content}</p>
+                    <div className="inline-block max-w-full rounded-xl bg-bubble px-3 py-1.5 text-left">
+                      <p className="mesh-copy whitespace-pre-wrap text-sm leading-snug">{turn.content}</p>
                     </div>
                   ) : null}
                 </div>

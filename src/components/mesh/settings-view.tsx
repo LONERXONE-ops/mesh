@@ -94,47 +94,64 @@ const GROUPS: {
 
 export function SettingsView() {
   const detail = useMesh((s) => s.detail);
+  const [groupId, setGroupId] = useState(GROUPS[0].id);
+  const activeGroup = GROUPS.find((group) => group.rows.some((row) => row.id === detail)) ?? GROUPS.find((group) => group.id === groupId) ?? GROUPS[0];
+
+  function openGroup(id: string) {
+    setGroupId(id);
+    meshActions.setDetail(null);
+  }
+
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-4 py-4 pt-safe lg:px-8">
-        <div className="flex items-start gap-2">
-          {detail ? (
-            <button
-              type="button"
-              className={cn("grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg lg:hidden", focusRing)}
-              aria-label="Back"
-              onClick={() => meshActions.setDetail(null)}
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={cn("grid size-11 place-items-center rounded-full text-fg lg:hidden", focusRing)}
-              aria-label="Close settings"
-              onClick={() => meshActions.setView("chat")}
-            >
-              <X className="size-5" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-xl font-semibold">{detail ? titleFor(detail) : "Settings"}</h1>
-            <p className="mt-1 text-sm text-muted">
-              {detail ? "Saved on this device until Mesh accounts are connected." : "Manage your account, preferences and AI settings."}
-            </p>
-          </div>
+    <section className="flex h-full min-h-0 flex-1 overflow-hidden">
+      <nav className="hidden w-44 shrink-0 flex-col border-r border-line bg-bg p-3 sm:flex">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium">Settings</p>
+          <button type="button" className={cn("grid size-8 place-items-center rounded-full text-muted", focusRing)} aria-label="Close settings" onClick={() => meshActions.setView("chat")}>
+            <X className="size-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          className={cn("hidden size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg lg:grid", focusRing)}
-          aria-label="Close settings"
-          onClick={() => meshActions.setView("chat")}
-        >
-          <X className="size-5" />
-        </button>
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 lg:px-8">
-        {detail ? <Detail id={detail} /> : <Overview />}
+        {GROUPS.map((group) => (
+          <button
+            key={group.id}
+            type="button"
+            onClick={() => openGroup(group.id)}
+            className={cn(
+              "mb-1 h-9 rounded-lg px-2 text-left text-sm",
+              focusRing,
+              activeGroup.id === group.id ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
+            )}
+          >
+            {group.title}
+          </button>
+        ))}
+      </nav>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-2 border-b border-line px-3 py-2 pt-safe">
+          <button type="button" className={cn("grid size-9 place-items-center rounded-full text-muted sm:hidden", focusRing)} aria-label="Close settings" onClick={() => meshActions.setView("chat")}>
+            <X className="size-4" />
+          </button>
+          <h1 className="text-sm font-medium">{detail ? titleFor(detail) : activeGroup.title}</h1>
+        </header>
+        <div className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 sm:hidden">
+          {GROUPS.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              onClick={() => openGroup(group.id)}
+              className={cn(
+                "h-8 shrink-0 rounded-full border px-3 text-xs",
+                focusRing,
+                activeGroup.id === group.id ? "border-fg bg-fg text-inverse-fg" : "border-line text-muted",
+              )}
+            >
+              {group.title}
+            </button>
+          ))}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          {detail ? <Detail id={detail} /> : <Overview group={activeGroup} />}
+        </div>
       </div>
     </section>
   );
@@ -148,59 +165,34 @@ function titleFor(id: SettingsDetail) {
   return "Settings";
 }
 
-function Overview() {
+function Overview({ group }: { group: (typeof GROUPS)[number] }) {
   return (
-    <div className="mx-auto max-w-5xl">
-      {GROUPS.map((group) => {
-        const Icon = group.icon;
-        return (
-          <section key={group.id} className="grid gap-4 border-b border-line py-6 lg:grid-cols-[16rem_1fr] lg:gap-10">
-            <div className="flex gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2">
-                <Icon className="size-4" aria-hidden />
-              </span>
-              <div>
-                <h2 className="text-sm font-medium">{group.title}</h2>
-                <p className="mt-1 text-sm text-muted">{group.text}</p>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-              {group.rows.map((row) => {
-                const RowIcon = row.icon;
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => meshActions.setDetail(row.id)}
-                    className={cn(
-                      "flex min-h-16 w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2/50",
-                      focusRing,
-                    )}
-                  >
-                    <RowIcon className="size-4 text-muted" aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium">{row.title}</span>
-                      <span className="block text-xs text-muted">{row.text}</span>
-                    </span>
-                    <ChevronRight className="size-4 text-faint" aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-            {group.id === "account" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void signOut("/login").catch(() => toast.error("Could not sign out"));
-                }}
-                className={cn("mt-3 h-11 rounded-full border border-line px-4 text-sm text-muted hover:text-fg", focusRing)}
-              >
-                Sign out
-              </button>
-            ) : null}
-          </section>
-        );
-      })}
+    <div className="mx-auto max-w-xl">
+      <p className="mb-3 text-sm text-muted">{group.text}</p>
+      <div className="overflow-hidden rounded-xl border border-line">
+        {group.rows.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => meshActions.setDetail(row.id)}
+            className={cn("flex h-12 w-full items-center gap-2 border-b border-line px-3 text-left text-sm last:border-b-0 hover:bg-surface", focusRing)}
+          >
+            <span className="min-w-0 flex-1 truncate">{row.title}</span>
+            <ChevronRight className="size-4 text-faint" aria-hidden />
+          </button>
+        ))}
+      </div>
+      {group.id === "account" ? (
+        <button
+          type="button"
+          onClick={() => {
+            void signOut("/login").catch(() => toast.error("Could not sign out"));
+          }}
+          className={cn("mt-4 h-9 rounded-full border border-line px-3 text-sm text-muted", focusRing)}
+        >
+          Sign out
+        </button>
+      ) : null}
     </div>
   );
 }

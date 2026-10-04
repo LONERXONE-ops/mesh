@@ -172,24 +172,23 @@ export function Composer({ onNeedModels }: { onNeedModels: () => void }) {
             modelIds.map((id) => (
               <span
                 key={id}
-                className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-chip pl-1.5 pr-1 text-sm"
+                className="inline-flex h-8 items-center gap-0.5 rounded-full border border-line bg-chip pl-0.5 pr-0.5"
               >
                 <button
                   type="button"
-                  className={cn("inline-flex items-center gap-1.5 rounded-full pr-1", focusRing)}
+                  className={cn("grid size-7 place-items-center rounded-full", focusRing)}
                   onClick={onNeedModels}
                   aria-label={`Change models, ${providerById(id)?.name ?? id} selected`}
                 >
-                  <ModelMark id={id} className="size-6" />
-                  {providerById(id)?.name ?? id}
+                  <ModelMark id={id} className="size-5" />
                 </button>
                 <button
                   type="button"
-                  className={cn("grid size-8 place-items-center rounded-full text-faint hover:text-fg", focusRing)}
+                  className={cn("grid size-6 place-items-center rounded-full text-faint hover:text-fg", focusRing)}
                   aria-label={`Remove ${providerById(id)?.name ?? id}`}
                   onClick={() => meshActions.removeParticipant(id)}
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3" />
                 </button>
               </span>
             ))
