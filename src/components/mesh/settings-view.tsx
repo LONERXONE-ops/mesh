@@ -24,6 +24,7 @@ import { meshActions, useMesh } from "@/lib/mesh/store";
 import type { SettingsDetail, WorkMode } from "@/lib/mesh/types";
 import { cn } from "@/lib/cn";
 import { Field, focusRing, inputClass } from "./bits";
+import { signOut } from "@/lib/auth/client";
 
 const GROUPS: {
   id: string;
@@ -186,6 +187,17 @@ function Overview() {
                 );
               })}
             </div>
+            {group.id === "account" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void signOut("/login").catch(() => toast.error("Could not sign out"));
+                }}
+                className={cn("mt-3 h-11 rounded-full border border-line px-4 text-sm text-muted hover:text-fg", focusRing)}
+              >
+                Sign out
+              </button>
+            ) : null}
           </section>
         );
       })}

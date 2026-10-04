@@ -10,15 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiMeshProfileRouteImport } from './routes/api/mesh-profile'
 import { Route as ApiMeshStorageRouteImport } from './routes/api/mesh-storage'
 import { Route as ApiMeshUploadRouteImport } from './routes/api/mesh-upload'
 import { Route as ApiProviderKeysRouteImport } from './routes/api/provider-keys'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -46,66 +53,85 @@ const ApiProviderKeysRoute = ApiProviderKeysRouteImport.update({
   path: '/api/provider-keys',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mesh-profile': typeof ApiMeshProfileRoute
   '/api/mesh-storage': typeof ApiMeshStorageRoute
   '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mesh-profile': typeof ApiMeshProfileRoute
   '/api/mesh-storage': typeof ApiMeshStorageRoute
   '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mesh-profile': typeof ApiMeshProfileRoute
   '/api/mesh-storage': typeof ApiMeshStorageRoute
   '/api/mesh-upload': typeof ApiMeshUploadRoute
   '/api/provider-keys': typeof ApiProviderKeysRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/api/chat'
     | '/api/mesh-profile'
     | '/api/mesh-storage'
     | '/api/mesh-upload'
     | '/api/provider-keys'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/api/chat'
     | '/api/mesh-profile'
     | '/api/mesh-storage'
     | '/api/mesh-upload'
     | '/api/provider-keys'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
+    | '/login'
     | '/api/chat'
     | '/api/mesh-profile'
     | '/api/mesh-storage'
     | '/api/mesh-upload'
     | '/api/provider-keys'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiMeshProfileRoute: typeof ApiMeshProfileRoute
   ApiMeshStorageRoute: typeof ApiMeshStorageRoute
   ApiMeshUploadRoute: typeof ApiMeshUploadRoute
   ApiProviderKeysRoute: typeof ApiProviderKeysRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -152,16 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProviderKeysRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   ApiChatRoute: ApiChatRoute,
   ApiMeshProfileRoute: ApiMeshProfileRoute,
   ApiMeshStorageRoute: ApiMeshStorageRoute,
   ApiMeshUploadRoute: ApiMeshUploadRoute,
   ApiProviderKeysRoute: ApiProviderKeysRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
