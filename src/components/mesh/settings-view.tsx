@@ -283,7 +283,7 @@ function ProfileForm() {
                       return;
                     }
 
-                    meshActions.updateProfile({ avatar: uploaded.url });
+                    meshActions.updateProfile({ avatar: uploaded.url, avatarPublicId: uploaded.publicId });
                     toast("Picture updated");
                   }, "image/jpeg", 0.85);
                 };

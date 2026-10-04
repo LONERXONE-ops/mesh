@@ -85,7 +85,7 @@ export async function loadCloudProfile(): Promise<{
   avatar?: string;
 } | null> {
   try {
-    const response = await fetch("/api/mesh-profile");
+    const response = await fetch("/api/mesh-profile", { credentials: "same-origin" });
     if (!response.ok) return null;
 
     const data = (await response.json()) as {
@@ -107,10 +107,12 @@ export async function saveCloudProfile(profile: {
   name: string;
   email: string;
   avatar?: string;
+  avatarPublicId?: string;
 }): Promise<boolean> {
   try {
     const response = await fetch("/api/mesh-profile", {
       method: "PUT",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
     });
@@ -136,6 +138,7 @@ export async function uploadCloudFile(
 
     const response = await fetch("/api/mesh-upload", {
       method: "POST",
+      credentials: "same-origin",
       body: form,
     });
 

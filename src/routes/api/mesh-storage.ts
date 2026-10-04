@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { requireUserId } from "@/lib/auth/verify.server";
+import { destroyCloudinaryAssets } from "@/lib/cloudinary.server";
 
 type ModelResponse = {
   id: string;
@@ -351,6 +352,15 @@ export const Route = createFileRoute("/api/mesh-storage")({
           }
 
           const sql = await getSql();
+          const assets = await sql<{ cloudinary_public_id: string | null }>`
+            select mesh_attachments.cloudinary_public_id
+            from mesh_attachments
+            join mesh_turns on mesh_turns.id = mesh_attachments.turn_id
+            join mesh_conversations on mesh_conversations.id = mesh_turns.conversation_id
+            where mesh_conversations.id = ${body.id}
+              and mesh_conversations.user_id = ${userId}
+          `;
+          await destroyCloudinaryAssets(assets.map((row) => row.cloudinary_public_id));
 
           await sql`
             delete from mesh_conversations

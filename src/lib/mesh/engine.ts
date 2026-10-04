@@ -10,24 +10,40 @@ type ChatMessage = {
 
 const controllers = new Map<string, AbortController>();
 
-function userContent(content: string, files: Attachment[]) {
+async function attachmentBody(file: Attachment) {
+  const stored = attachmentText(file.id);
+  if (stored?.text) return stored.text;
+  if (!file.url) return "The file content is not available.";
+  if (!file.mime.startsWith("text/") && file.mime !== "application/json" && file.mime !== "application/xml") {
+    return `Stored file URL: ${file.url}`;
+  }
+  try {
+    const response = await fetch(file.url);
+    if (!response.ok) return `Stored file URL: ${file.url}`;
+    const text = await response.text();
+    return text.slice(0, 12000);
+  } catch {
+    return `Stored file URL: ${file.url}`;
+  }
+}
+
+async function userContent(content: string, files: Attachment[]) {
   if (!files.length) return content;
-  const blocks = files.map((file) => {
-    const stored = attachmentText(file.id);
-    if (!stored) {
-      return `Attached file: ${file.name} (${file.mime}). The file content is no longer available in this browser session.`;
-    }
-    return [`Attached file: ${stored.name}`, `Type: ${stored.mime}`, stored.text].join("\n");
-  });
+  const blocks = await Promise.all(
+    files.map(async (file) => {
+      const body = await attachmentBody(file);
+      return [`Attached file: ${file.name}`, `Type: ${file.mime}`, body].join("\n");
+    }),
+  );
   return [content, "ATTACHMENTS", ...blocks].filter(Boolean).join("\n\n");
 }
 
-function getMessages(
+async function getMessages(
   convId: string,
   turnId: string,
   responseId: string,
   collaborativeContext: string[] = [],
-): ChatMessage[] {
+): Promise<ChatMessage[]> {
   const state = useMesh.getState();
   const conv = state.conversations.find((c) => c.id === convId);
 
@@ -37,7 +53,7 @@ function getMessages(
 
   if (!currentTurn) return [];
 
-  const currentContent = userContent(currentTurn.content, currentTurn.attachments);
+  const currentContent = await userContent(currentTurn.content, currentTurn.attachments);
 
   // Collaborative mode is a task chain.
   // Previous user turns are context for the conversation, but must NEVER
@@ -89,7 +105,7 @@ function getMessages(
 
     messages.push({
       role: "user",
-      content: userContent(turn.content, turn.attachments),
+      content: await userContent(turn.content, turn.attachments),
     });
 
     const ownResponse = turn.responses.find((r) => r.id === responseId);
@@ -173,9 +189,9 @@ export async function runTurn(convId: string, turnId: string) {
   }
 
   // A failed model must never stop the other selected models.
-  await Promise.all(
+  await Promise.allSettled(
     turn.responses.map((response) =>
-      runResponse(convId, turnId, response.id, []),
+      runResponse(convId, turnId, response.id, []).catch(() => null),
     ),
   );
 }
@@ -214,7 +230,7 @@ export async function runResponse(
   });
 
   try {
-    const messages = getMessages(
+    const messages = await getMessages(
       convId,
       turnId,
       responseId,

@@ -680,6 +680,7 @@ export const meshActions = {
         name: profile.name,
         email: profile.email,
         ...(profile.avatar ? { avatar: profile.avatar } : {}),
+        ...(profile.avatarPublicId ? { avatarPublicId: profile.avatarPublicId } : {}),
       });
       return { profile };
     });

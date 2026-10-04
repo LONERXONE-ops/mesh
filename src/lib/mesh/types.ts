@@ -81,6 +81,7 @@ export interface Profile {
   name: string;
   email: string;
   avatar?: string;
+  avatarPublicId?: string;
 }
 
 export interface ProviderDef {

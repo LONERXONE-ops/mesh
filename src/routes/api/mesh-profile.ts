@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { requireUserId } from "@/lib/auth/verify.server";
+import { destroyCloudinaryAssets } from "@/lib/cloudinary.server";
 
 export const Route = createFileRoute("/api/mesh-profile")({
   server: {
@@ -53,6 +54,7 @@ export const Route = createFileRoute("/api/mesh-profile")({
             name?: unknown;
             email?: unknown;
             avatar?: unknown;
+            avatarPublicId?: unknown;
           };
 
           const name =
@@ -69,24 +71,37 @@ export const Route = createFileRoute("/api/mesh-profile")({
             typeof body.avatar === "string" && body.avatar.trim()
               ? body.avatar.trim()
               : null;
+          const avatarPublicId =
+            typeof body.avatarPublicId === "string" && body.avatarPublicId.trim()
+              ? body.avatarPublicId.trim()
+              : null;
 
           const sql = await getSql();
+          const previous = await sql<{ avatar_public_id: string | null }>`
+            select avatar_public_id from mesh_profiles where user_id = ${userId} limit 1
+          `;
+          const previousId = previous[0]?.avatar_public_id;
+          if (previousId && previousId !== avatarPublicId) {
+            await destroyCloudinaryAssets([previousId]);
+          }
 
           await sql`
             insert into mesh_profiles (
-              user_id, name, email, avatar_url, updated_at
+              user_id, name, email, avatar_url, avatar_public_id, updated_at
             )
             values (
               ${userId},
               ${name},
               ${email},
               ${avatar},
+              ${avatarPublicId},
               ${Date.now()}
             )
             on conflict (user_id) do update set
               name = excluded.name,
               email = excluded.email,
               avatar_url = excluded.avatar_url,
+              avatar_public_id = coalesce(excluded.avatar_public_id, mesh_profiles.avatar_public_id),
               updated_at = excluded.updated_at
           `;
 
